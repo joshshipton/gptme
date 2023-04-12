@@ -1,8 +1,11 @@
+import numpy as np
 import pandas as pd
 import sqlite3
 import os
 import json
 import datetime
+import re
+
 folder_path = 'C:\\Users\\Shipt\\Desktop\\chatbot\\data\\messages\\inbox'
 db = sqlite3.connect('database.db')
 cursor = db.cursor()
@@ -17,16 +20,23 @@ for root, dirs, files in os.walk(folder_path):
 
         # Loop through the JSON files
         for json_file in json_files:
-            with open(os.path.join(root, dir, json_file), 'r', encoding='utf-8') as f:
-                json_data = json.load(f)
+            with open(os.path.join(root, dir, json_file), 'r', encoding='iso-8859-1') as f:
+                json_data = f.read().encode('utf-8').decode('utf-8-sig')
+                json_data = json.loads(json_data)
 
-            # Extract the required data from the JSON object
+        # Check that its not a gc cause thats too hard rn #imdumb #defeated
+            if len(json_data['participants']) != 2:
+                continue
+
+         # Extract the required data from the JSON object
             messages = json_data['messages']
 
-            # Do something with the data
+          # Do something with the data
             for message in messages:
                 try:
-                    data['text'].append(message['content'])
+                    # removes emojis
+                    content = re.sub(r'[^\x00-\x7F]+', '', message['content'])
+                    data['text'].append(content)
                     # uses binary to flag if was sent by me or not
                     who_from = (message['sender_name'])
                     if who_from == 'Josh Shipton' or who_from == 'joshshipo':
@@ -47,10 +57,20 @@ for root, dirs, files in os.walk(folder_path):
 
 
 df = pd.DataFrame(data)
+# making masks to fix data 
+mask = (df['text'].str.lower().str.split().str[1] == 'reacted') | (
+    df['text'].str.lower().str.split().str[0] == 'reacted')
+df = df.loc[~mask]
+mask = df['text'].str.contains('Liked a message')
+df = df.loc[~mask]
+
+# testing code
+file_path = 'new_file.txt'
+with open(file_path, 'a', encoding='utf-8') as f:
+    f.write(df.to_csv(header=False, index=False))
 
 
 df.dropna(subset=['text'], inplace=True)
-
 
 
 def make_sentences(series):
@@ -75,10 +95,9 @@ for person in pd.unique(df['handle_id']):
 train_data['text'] = train_data['text'].apply(lambda x: x.lower())
 train_data['response'] = train_data['response'].apply(lambda x: x.lower())
 
-
-print(train_data.head(50))
 train_data.to_sql('chatbot', db, if_exists='replace', index=False)
 
 # Read the data from the database to confirm that it was written correctly
 df = pd.read_sql_query('SELECT * FROM chatbot', db)
-print(df.head())
+#print(df.head())
+print('doneski')
