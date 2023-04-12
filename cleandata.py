@@ -10,6 +10,7 @@ folder_path = 'C:\\Users\\Shipt\\Desktop\\chatbot\\data\\messages\\inbox'
 db = sqlite3.connect('database.db')
 cursor = db.cursor()
 data = {'text': [], 'handle_id': [], 'is_from_me': [], 'date': []}
+other_participant = ''
 
 
 for root, dirs, files in os.walk(folder_path):
@@ -30,21 +31,31 @@ for root, dirs, files in os.walk(folder_path):
 
          # Extract the required data from the JSON object
             messages = json_data['messages']
+            partcipants = json_data['participants']
 
           # Do something with the data
+
+            for participant in partcipants:
+                try:
+                    # this should be the participant who isnt me right
+                    other_participant = participant[0]
+                    print(other_participant)
+
+                except (KeyError):
+                    continue
             for message in messages:
                 try:
                     # removes emojis
                     content = re.sub(r'[^\x00-\x7F]+', '', message['content'])
                     data['text'].append(content)
-                    # uses binary to flag if was sent by me or not
+                    # uses binary to flag if it was sent by me or not
                     who_from = (message['sender_name'])
-                    if who_from == 'Josh Shipton' or who_from == 'joshshipo':
+                    if who_from == 'Josh Shipton':
                         data['is_from_me'].append(1)
                     else:
                         data['is_from_me'].append(0)
 
-                    data['handle_id'].append(who_from)
+                    data['handle_id'].append(other_participant)
 
                     # converts the weird timestamp fb gives into normal data
                     timestamp_ms = message['timestamp_ms']
@@ -57,7 +68,7 @@ for root, dirs, files in os.walk(folder_path):
 
 
 df = pd.DataFrame(data)
-# making masks to fix data 
+# making masks to fix data
 mask = (df['text'].str.lower().str.split().str[1] == 'reacted') | (
     df['text'].str.lower().str.split().str[0] == 'reacted')
 df = df.loc[~mask]
@@ -65,7 +76,7 @@ mask = df['text'].str.contains('Liked a message')
 df = df.loc[~mask]
 
 # testing code
-file_path = 'new_file.txt'
+file_path = 'to_see_data.txt'
 with open(file_path, 'a', encoding='utf-8') as f:
     f.write(df.to_csv(header=False, index=False))
 
@@ -81,10 +92,13 @@ train_data = pd.DataFrame(columns=['text', 'response'])
 
 # iterate thru each convo
 for person in pd.unique(df['handle_id']):
+    # goes through one person at a time
     conversation = df[df['handle_id'] == person]
+    # groups the data by rows when the "is_from_me" changes. applies the "make sentences" function to concate the repeated messages into single sentences
     grouped = (conversation.groupby(conversation.is_from_me.diff().ne(0).cumsum(), as_index=False)
                .agg({'text': make_sentences, 'is_from_me': 'first',
                      'handle_id': 'first', 'date': 'first'}))
+
     tmp = pd.DataFrame({'text': list(conversation['text'][0:-1]),
                         'response': list(conversation['text'][1:])})
 
@@ -95,9 +109,14 @@ for person in pd.unique(df['handle_id']):
 train_data['text'] = train_data['text'].apply(lambda x: x.lower())
 train_data['response'] = train_data['response'].apply(lambda x: x.lower())
 
+# testing code
+file_path = 'train_data.txt'
+with open(file_path, 'a', encoding='utf-8') as f:
+    f.write(train_data.to_csv(header=False, index=False))
+
 train_data.to_sql('chatbot', db, if_exists='replace', index=False)
 
 # Read the data from the database to confirm that it was written correctly
 df = pd.read_sql_query('SELECT * FROM chatbot', db)
-#print(df.head())
+# print(df.head())
 print('doneski')
