@@ -1,5 +1,6 @@
 data/
 database.db
 new_file.txt
-_pycache_/
+__pycache__/
 output.csv
+.gitignore
