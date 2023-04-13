@@ -5,6 +5,11 @@ import os
 import json
 import datetime
 import re
+from itertools import zip_longest
+handle_id = 0
+
+
+
 
 folder_path = 'C:\\Users\\Shipt\\Desktop\\chatbot\\data\\messages\\inbox'
 db = sqlite3.connect('database.db')
@@ -37,6 +42,7 @@ for root, dirs, files in os.walk(folder_path):
 
             person = partcipants[0]
             other_participant = person['name']
+            handle_id += 1
 
             for message in messages:
                 try:
@@ -50,7 +56,7 @@ for root, dirs, files in os.walk(folder_path):
                     else:
                         data['is_from_me'].append(0)
 
-                    data['handle_id'].append(other_participant)
+                    data['handle_id'].append(handle_id)
 
                     # converts the weird timestamp fb gives into normal data
                     timestamp_ms = message['timestamp_ms']
@@ -63,13 +69,18 @@ for root, dirs, files in os.walk(folder_path):
 
 
 df = pd.DataFrame(data)
-df = df.sort_values(by='date')
+file_path = 'output.csv'
+
+# Write the DataFrame to a CSV file
+df.to_csv(file_path, index=False)
 # making masks to fix data
 mask = (df['text'].str.lower().str.split().str[1] == 'reacted') | (
     df['text'].str.lower().str.split().str[0] == 'reacted')
 df = df.loc[~mask]
 mask = df['text'].str.contains('Liked a message')
 df = df.loc[~mask]
+df['text'] = df['text'].str.replace('\s+', ' ', regex=True)
+
 
 
 df.dropna(subset=['text'], inplace=True)
@@ -105,6 +116,15 @@ for person in pd.unique(df['handle_id']):
     sent_messages = grouped[grouped['is_from_me'] == 'from_me']['text'].tolist()
     recv_messages = grouped[grouped['is_from_me'] == 'not_from_me']['text'].tolist()
 
+    # if sent messages are longer then need to skip fist sent message
+    # if recieved messages are longer then need to skip last recieved message 
+    if len(sent_messages) > len(recv_messages):
+        sent_messages = sent_messages[1:]
+        print('sent messages longer, skip the first one')
+    elif len(sent_messages) < len(recv_messages):
+        recv_messages = recv_messages[:-1]
+        print('recived more messages, skip the last one')
+
     # testing code
     file_path = 'sentt.txt'
     with open(file_path, 'a', encoding='utf-8') as f:
@@ -117,8 +137,8 @@ for person in pd.unique(df['handle_id']):
         for message in recv_messages:
             f.write(message + '\n')
 
-    tmp = pd.DataFrame({'text': sent_messages[0:-1],
-                        'response': recv_messages[1:]})
+    tmp = pd.DataFrame({'text': recv_messages,
+                        'response': sent_messages})
 
     train_data = pd.concat(
         [train_data, tmp[['text', 'response']]], ignore_index=True)
@@ -126,6 +146,8 @@ for person in pd.unique(df['handle_id']):
 # make lowercase
 train_data['text'] = train_data['text'].apply(lambda x: x.lower())
 train_data['response'] = train_data['response'].apply(lambda x: x.lower())
+
+
 
 
 train_data.to_sql('chatbot', db, if_exists='replace', index=False)
