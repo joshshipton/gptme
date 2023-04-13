@@ -120,22 +120,22 @@ for person in pd.unique(df['handle_id']):
     # if recieved messages are longer then need to skip last recieved message 
     if len(sent_messages) > len(recv_messages):
         sent_messages = sent_messages[1:]
-        print('sent messages longer, skip the first one')
+        # print('sent messages longer, skip the first one')
     elif len(sent_messages) < len(recv_messages):
         recv_messages = recv_messages[:-1]
-        print('recived more messages, skip the last one')
+        # print('recived more messages, skip the last one')
 
-    # testing code
-    file_path = 'sentt.txt'
-    with open(file_path, 'a', encoding='utf-8') as f:
-        for message in sent_messages:
-            f.write(message + '\n')
+    # # testing code
+    # file_path = 'sentt.txt'
+    # with open(file_path, 'a', encoding='utf-8') as f:
+    #     for message in sent_messages:
+    #         f.write(message + '\n')
 
-    # testing code
-    file_path = 'recv.txt'
-    with open(file_path, 'a', encoding='utf-8') as f:
-        for message in recv_messages:
-            f.write(message + '\n')
+    # # testing code
+    # file_path = 'recv.txt'
+    # with open(file_path, 'a', encoding='utf-8') as f:
+    #     for message in recv_messages:
+    #         f.write(message + '\n')
 
     tmp = pd.DataFrame({'text': recv_messages,
                         'response': sent_messages})
@@ -156,3 +156,5 @@ train_data.to_sql('chatbot', db, if_exists='replace', index=False)
 df = pd.read_sql_query('SELECT * FROM chatbot', db)
 # print(df.head())
 print('doneski')
+
+
