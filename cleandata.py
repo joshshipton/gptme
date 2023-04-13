@@ -35,14 +35,9 @@ for root, dirs, files in os.walk(folder_path):
 
           # Do something with the data
 
-            for participant in partcipants:
-                try:
-                    # this should be the participant who isnt me right
-                    other_participant = participant[0]
-                    print(other_participant)
+            person = partcipants[0]
+            other_participant = person['name']
 
-                except (KeyError):
-                    continue
             for message in messages:
                 try:
                     # removes emojis
@@ -68,17 +63,13 @@ for root, dirs, files in os.walk(folder_path):
 
 
 df = pd.DataFrame(data)
+df = df.sort_values(by='date')
 # making masks to fix data
 mask = (df['text'].str.lower().str.split().str[1] == 'reacted') | (
     df['text'].str.lower().str.split().str[0] == 'reacted')
 df = df.loc[~mask]
 mask = df['text'].str.contains('Liked a message')
 df = df.loc[~mask]
-
-# testing code
-file_path = 'to_see_data.txt'
-with open(file_path, 'a', encoding='utf-8') as f:
-    f.write(df.to_csv(header=False, index=False))
 
 
 df.dropna(subset=['text'], inplace=True)
@@ -90,17 +81,44 @@ def make_sentences(series):
 
 train_data = pd.DataFrame(columns=['text', 'response'])
 
+# ok
+# go through entire dataframes by each individual handleid "meaning the person the conversation is with"
+# for each person goes thru and grabs repeated ones with the same is_from_me binary flag
+# applies the "make sentences" function to those repeated messages to make them one big message
+# then the first message they sent should be "text"
+# the next message i sent should be response i and then theirs should be i+1
+
+
 # iterate thru each convo
 for person in pd.unique(df['handle_id']):
     # goes through one person at a time
     conversation = df[df['handle_id'] == person]
     # groups the data by rows when the "is_from_me" changes. applies the "make sentences" function to concate the repeated messages into single sentences
-    grouped = (conversation.groupby(conversation.is_from_me.diff().ne(0).cumsum(), as_index=False)
-               .agg({'text': make_sentences, 'is_from_me': 'first',
-                     'handle_id': 'first', 'date': 'first'}))
 
-    tmp = pd.DataFrame({'text': list(conversation['text'][0:-1]),
-                        'response': list(conversation['text'][1:])})
+    grouped = (conversation.groupby(conversation.is_from_me.diff().ne(0).cumsum(), as_index=False)
+               .agg({'text': make_sentences,
+                    'is_from_me': 'first',
+                     'handle_id': 'first',
+                     'date': 'first',
+                     'is_from_me': lambda x: 'from_me' if x.iloc[0] == 1 else 'not_from_me'}))
+
+    sent_messages = grouped[grouped['is_from_me'] == 'from_me']['text'].tolist()
+    recv_messages = grouped[grouped['is_from_me'] == 'not_from_me']['text'].tolist()
+
+    # testing code
+    file_path = 'sentt.txt'
+    with open(file_path, 'a', encoding='utf-8') as f:
+        for message in sent_messages:
+            f.write(message + '\n')
+
+    # testing code
+    file_path = 'recv.txt'
+    with open(file_path, 'a', encoding='utf-8') as f:
+        for message in recv_messages:
+            f.write(message + '\n')
+
+    tmp = pd.DataFrame({'text': sent_messages[0:-1],
+                        'response': recv_messages[1:]})
 
     train_data = pd.concat(
         [train_data, tmp[['text', 'response']]], ignore_index=True)
@@ -109,10 +127,6 @@ for person in pd.unique(df['handle_id']):
 train_data['text'] = train_data['text'].apply(lambda x: x.lower())
 train_data['response'] = train_data['response'].apply(lambda x: x.lower())
 
-# testing code
-file_path = 'train_data.txt'
-with open(file_path, 'a', encoding='utf-8') as f:
-    f.write(train_data.to_csv(header=False, index=False))
 
 train_data.to_sql('chatbot', db, if_exists='replace', index=False)
 
