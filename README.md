@@ -1,10 +1,10 @@
-####💻 ChatBot Data Preprocessing
+#### 💻 ChatBot Data Preprocessing
 This script preprocesses Facebook Messenger data to create a dataset that can be used for training a chatbot.
 
-###📝 Prerequisites
+### 📝 Prerequisites
 To use this script, you'll need:
 
-#Python 3.6 or later
+# Python 3.6 or later
 NumPy
 Pandas
 SQLite3
