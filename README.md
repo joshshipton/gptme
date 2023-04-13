@@ -8,3 +8,6 @@ NumPy
 Pandas
 SQLite3
 
+### Why did I make this?
+
+I made this because I was sick of replying to peoples messages and wanted a way to automate the process. The result was lackluster and is not believeable or useable at all. Probably a result of bad code, not enough training data and tf-idf not really taking into account context and other elements of conversation. If i were to try to remake this I would probably just send messages to chatgpt as prompts and output the response.
