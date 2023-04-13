@@ -10,7 +10,7 @@ def chatbot():
         if text == 'quit()':
             quit=True
         else:
-            response = es.search(index='textbot', doc_type='clue', body={ "query": {
+            response = es.search(index='textbot', body={ "query": {
                 "match": {
                     "text":text
                 }
