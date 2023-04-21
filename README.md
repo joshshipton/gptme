@@ -7,6 +7,7 @@ Python 3.6 or later
 NumPy
 Pandas
 SQLite3
+Elastic-search (run the elasticsearch.bat file in cmd before starting the chatbot)
 
 ### Why did I make this?
 
